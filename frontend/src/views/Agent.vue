@@ -139,6 +139,13 @@ drops:
             +
           </a>
 
+          <a class="btn btn-sm"
+             href="#"
+             title="Create rules for CloudFlare subnets."
+             v-on:click.prevent="handleCf()">
+            <img style="height: 60px; margin-top: 4px" src="/cf.png"/>
+          </a>
+
           <span class="float-right d-inline">
             <small style="font-size: 0.9rem">
               <a href="https://github.com/evilsocket/shieldwall/wiki/Rules" target="_blank">Help</a>
@@ -154,19 +161,22 @@ drops:
             <th scope="col">Proto</th>
             <th scope="col">Ports</th>
             <th scope="col">Expires</th>
+            <th scope="col">Comment</th>
             <th scope="col"></th>
           </tr>
           </thead>
 
           <tbody>
           <tr v-for="(rule, index) in agent.rules" :key="`rule-${index}`">
-            <td class="fit">
-              <select class="form-control">
+
+            <td class="fit input-group-sm">
+              <select class="form-control" v-model="rule.type">
                 <option :selected="rule.type == 'allow'" value="allow">Allow</option>
                 <option :selected="rule.type == 'block'" value="block">Block</option>
               </select>
             </td>
-            <td class="fit">
+
+            <td class="fit input-group-sm">
               <input
                   v-model="rule.address"
                   v-validate="'required'"
@@ -175,14 +185,16 @@ drops:
                   name="address"
               />
             </td>
-            <td class="fit">
+
+            <td class="fit input-group-sm">
               <select class="form-control" v-model="rule.protocol">
                 <option :selected="rule.protocol == 'tcp'" value="tcp">TCP</option>
                 <option :selected="rule.protocol == 'udp'" value="udp">UDP</option>
                 <option :selected="rule.protocol == 'all'" value="all">All</option>
               </select>
             </td>
-            <td class="fit">
+
+            <td class="fit input-group-sm">
               <input
                   v-model="rule.ports"
                   v-validate="'required'"
@@ -192,7 +204,7 @@ drops:
               />
             </td>
 
-            <td class="fit">
+            <td class="fit input-group-sm">
               <select class="form-control" v-model.number="rule.ttl" type="number">
                 <option :selected="rule.ttl == 0" value=0>Never</option>
                 <option :selected="rule.ttl == 3" value=3>3 Seconds</option>
@@ -205,8 +217,16 @@ drops:
                 <option :selected="rule.ttl == 86400" value=86400>24 Hours</option>
               </select>
             </td>
+            <td class="fit input-group-sm">
+              <input
+                  v-model="rule.comment"
+                  type="text"
+                  class="form-control input-small"
+                  name="comment"
+              />
+            </td>
 
-            <td class="fit">
+            <td class="fit input-group-sm">
               <a class="btn btn-sm btn-danger" href="#" v-on:click="handleRuleDelete(agent.rules.indexOf(rule))">
                 x
               </a>
@@ -334,8 +354,33 @@ export default {
           this.$store.state.auth.user.address,
           "all",
           ["443", "80", "22"],
-          43200
+          43200,
+          'Client IP on ' + (new Date())
       ));
+    },
+
+    handleCf() {
+    UserService.getCloudFlareSubnets().then(
+          response => {
+            for(let i in response.data) {
+              let subnet = response.data[i];
+              this.agent.rules.push(new Rule(
+                  "allow",
+                  subnet,
+                  "tcp",
+                  ["443", "80"],
+                  0,
+                  "CloudFlare"
+              ));
+            }
+          },
+          error => {
+            this.error =
+                (error.response && error.response.data && error.response.data.error) ||
+                error.error ||
+                error.toString();
+          }
+      );
     }
   }
 };

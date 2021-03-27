@@ -13,6 +13,13 @@ const (
 	AllPorts = "1:65535"
 )
 
+type IPType int
+
+const (
+	IPv4 = IPType(4)
+	IPv6 = IPType(6)
+)
+
 type Protocol string
 
 const (
@@ -45,6 +52,7 @@ type Rule struct {
 	AddressType AddressType `json:"address_type"`
 	Protocol    Protocol    `json:"protocol"`
 	Ports       []string    `json:"ports"` // strings to also allow ranges
+	Comment     string      `json:"comment"`
 }
 
 func (r Rule) Expires() bool {
@@ -53,6 +61,26 @@ func (r Rule) Expires() bool {
 
 func (r Rule) Expired() bool {
 	return r.Expires() && time.Since(r.CreatedAt).Seconds() >= float64(r.TTL)
+}
+
+func (r Rule) IPType() IPType {
+	if strings.Contains(r.Address, ":") {
+		return IPv6
+	}
+	return IPv4
+}
+
+func (r Rule) Protocols() []string {
+	switch r.Protocol {
+	case ProtoTCP:
+		return []string{string(ProtoTCP)}
+	case ProtoUDP:
+		return []string{string(ProtoUDP)}
+	}
+	return []string{
+		string(ProtoTCP),
+		string(ProtoUDP),
+	}
 }
 
 func (r *Rule) Validate() error {
